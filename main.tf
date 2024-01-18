@@ -1,24 +1,20 @@
 ## Creamos el recurso bucket
-
-resource "aws_s3_bucket" "bucket_testing" {
-  bucket        = var.bucket_name
+resource "aws_s3_bucket" "bucketTesting" {
   force_destroy = true
-
   tags = {
-    Name        = "bucket_proyecto_1"
     Environment = "Testing"
   }
 }
 # Creamos una Public ACL con Ownership, bloque de acceso publico y la ACL aplicada al dicho bucket
 resource "aws_s3_bucket_ownership_controls" "public_acl_0" {
-  bucket = aws_s3_bucket.bucket_testing.id
+  bucket = aws_s3_bucket.bucketTesting.id
   rule {
     object_ownership = "BucketOwnerPreferred"
   }
 }
 
 resource "aws_s3_bucket_public_access_block" "public_acl_1" {
-  bucket = aws_s3_bucket.bucket_testing.id
+  bucket = aws_s3_bucket.bucketTesting.id
 
   block_public_acls       = false
   block_public_policy     = false
@@ -32,10 +28,9 @@ resource "aws_s3_bucket_acl" "public_acl_2" {
     aws_s3_bucket_public_access_block.public_acl_1,
   ]
 
-  bucket = aws_s3_bucket.bucket_testing.id
+  bucket = aws_s3_bucket.bucketTesting.id
   acl    = "public-read"
 }
-
 
 # Modulo de babenko para la carga de archivos en dicho bucket
 module "template_files" {
@@ -46,7 +41,7 @@ module "template_files" {
 
 # Configuracion de las diferentes paginas del sitio dentro del bucket
 resource "aws_s3_bucket_website_configuration" "bucket_proyecto_1" {
-  bucket = aws_s3_bucket.bucket_testing.id
+  bucket = aws_s3_bucket.bucketTesting.id
 
   index_document {
     suffix = "index.html"
@@ -68,8 +63,7 @@ resource "aws_s3_bucket_website_configuration" "bucket_proyecto_1" {
 
 # Policy del bucket para permitir el manejo de archivos
 resource "aws_s3_bucket_policy" "hosting_bucket_policy" {
-  bucket = aws_s3_bucket.bucket_testing.id
-
+  bucket = aws_s3_bucket.bucketTesting.id
   policy = jsonencode({
     "Version" : "2012-10-17",
     "Statement" : [
@@ -77,14 +71,16 @@ resource "aws_s3_bucket_policy" "hosting_bucket_policy" {
         "Effect" : "Allow",
         "Principal" : "*",
         "Action" : "s3:GetObject",
-        "Resource" : "arn:aws:s3:::${var.bucket_name}/*"
+        "Resource" : [
+          "arn:aws:s3:::${aws_s3_bucket.bucketTesting.id}/*"
+        ]
       }
     ]
   })
 }
 
 resource "aws_s3_object" "hosting_bucket_files" {
-  bucket = aws_s3_bucket.bucket_testing.id
+  bucket = aws_s3_bucket.bucketTesting.id
 
   for_each = module.template_files.files
 
@@ -95,5 +91,4 @@ resource "aws_s3_object" "hosting_bucket_files" {
   content = each.value.content
 
   etag = each.value.digests.md5
-
 }
